@@ -2,8 +2,7 @@
 tomboy2evernote
 ===============
 
-Your project was successfully set up with PyScaffold 0.9.
-Following features are available:
+[Tomboy](https://wiki.gnome.org/Apps/Tomboy) to [Evernote](https://evernote.com) synchronization tool
 
 Packaging
 =========
