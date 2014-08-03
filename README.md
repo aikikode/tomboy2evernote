@@ -2,7 +2,9 @@
 tomboy2evernote
 ===============
 
-[Tomboy](https://wiki.gnome.org/Apps/Tomboy) to [Evernote](https://evernote.com) synchronization tool
+[Tomboy](https://wiki.gnome.org/Apps/Tomboy) to [Evernote](https://evernote.com) synchronization tool  
+
+See [Tomboy notes format](https://wiki.gnome.org/Apps/Tomboy/NoteXmlFormat).
 
 Packaging
 =========

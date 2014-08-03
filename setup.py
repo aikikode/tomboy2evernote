@@ -23,10 +23,10 @@ __location__ = os.path.join(os.getcwd(), os.path.dirname(
 
 # Change these settings according to your needs
 MAIN_PACKAGE = "tomboy2evernote"
-DESCRIPTION = "None"
-LICENSE = "new BSD"
-URL = "None"
-AUTHOR = "aikikode"
+DESCRIPTION = "Tomboy to Evernote synchronization tool"
+LICENSE = "The MIT License (MIT)"
+URL = "https://github.com/aikikode/tomboy2evernote"
+AUTHOR = "Denis Kovalev"
 EMAIL = "aikikode@gmail.com"
 
 COVERAGE_XML = False
@@ -194,7 +194,7 @@ def setup_package():
           author=AUTHOR,
           author_email=EMAIL,
           license=LICENSE,
-          long_description=read('README.rst'),
+          long_description=read('README.md'),
           classifiers=CLASSIFIERS,
           test_suite='tests',
           packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
