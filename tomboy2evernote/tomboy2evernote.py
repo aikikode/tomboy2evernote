@@ -3,10 +3,12 @@
 import glob
 import os
 import re
+import urllib
 from evernote.api.client import EvernoteClient
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
 import lxml.etree as ET
+import cgi
 
 __author__ = 'aikikode'
 
@@ -28,7 +30,7 @@ class Evernote(EvernoteClient):
         note_contents -- note data in ENML markup without <en-note> tags. See https://dev.evernote.com/doc/articles/enml.php
         notebook_name -- name of the notebook to create note in (ignored on 'update')
         """
-        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)), 0,
+        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words=u"intitle:\"{}\"".format(note_title)), 0,
                                                             100, NotesMetadataResultSpec())
         notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
                  for note_data in notes_data_list.notes)
@@ -56,7 +58,7 @@ class Evernote(EvernoteClient):
                 self.note_store.createNote(note)
 
     def cat_note(self, note_title):
-        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)), 0,
+        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words=u"intitle:\"{}\"".format(note_title)), 0,
                                                             100, NotesMetadataResultSpec())
         notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
                  for note_data in notes_data_list.notes)
@@ -68,33 +70,39 @@ class Evernote(EvernoteClient):
 
 def convert_tomboy_to_evernote(note_path):
     def el(name, parent=''):
-        return "{{http://beatniksoftware.com/tomboy{}}}{}".format(parent, name)
+        return u"{{http://beatniksoftware.com/tomboy{}}}{}".format(parent, name)
 
+    tags_convertion = {el('bold'): 'strong',
+                       el('underline'): ['span style="text-decoration: underline;"', 'span'],
+                       el('monospace'): ['span style="font-family: \'courier new\', courier, monospace;"', 'span'],
+                       el('list'): 'ul',
+                       el('list-item'): 'li',
+                       }
     def innertext(tag):
         """Convert Tomboy XML to Markdown"""
         text = tag.text or ''
         tail_text = ''
-        tags_convertion = {el('bold'): 'strong',
-                           el('underline'): ['span style="text-decoration: underline;"', 'span'],
-                           el('monospace'): ['span style="font-family: \'courier new\', courier, monospace;"', 'span'],
-                           el('url', '/link'): ['a href="{}"', 'a'],
-                           el('list'): 'ul',
-                           el('list-item'): 'li',
-                           }
+
         try:
-            ev_tag = tags_convertion[tag.tag]
-            if isinstance(ev_tag, list):
-                text = '<{}>{}</{}>'.format(ev_tag[0].format(text), text, ev_tag[1])
-                tail_text = '{}'.format(tag.tail or '')
+            if tag.tag == el('url', '/link'):
+                text = urllib.quote(cgi.escape(text.encode('utf-8')), safe="/;%[]=:$&())+,!?*@'~")
+                ev_tag = (u'a shape="rect" href="{}"'.format(text), 'a')
+                text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
+                tail_text = u'{}'.format(tag.tail or '')
             else:
-                text = '<{}>{}'.format(ev_tag, text)
-                if ev_tag == 'ul':
-                    tail_text = '</{}>{}'.format(ev_tag, tag.tail or '')
+                ev_tag = tags_convertion[tag.tag]
+                if isinstance(ev_tag, list):
+                    text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
+                    tail_text = u'{}'.format(tag.tail or '')
                 else:
-                    tail_text = '{}</{}>'.format(tag.tail or '', ev_tag)
+                    text = u'<{}>{}'.format(ev_tag, text)
+                    if ev_tag == 'ul':
+                        tail_text = u'</{}>{}'.format(ev_tag, tag.tail or '')
+                    else:
+                        tail_text = u'{}</{}>'.format(tag.tail or '', ev_tag)
         except KeyError:
             pass
-        return "{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
+        return u"{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
     TOMBOY_CAT_PREFIX = 'system:notebook:'
     root = ET.parse(note_path).getroot()
 
@@ -119,6 +127,7 @@ def convert_tomboy_to_evernote(note_path):
     # Parse contents
     contentTag = root.find(el('text')).find(el('note-content'))
     content = innertext(contentTag)
+    content = content.encode('utf-8')
     content = content.replace(title, '', 1).lstrip()
     content = ''.join(['{}<br clear="none"/>'.format(line.strip()) if re.match('<.*>', line.strip()) else '<div>{}<br clear="none"/></div>'.format(line.strip()) for line in content.split('\n')])
 
@@ -133,6 +142,10 @@ def convert_tomboy_to_evernote(note_path):
 if __name__ == "__main__":
     dev_token = ""
     evernote = Evernote(token=dev_token)
+    evernote.cat_note("Django plugins etalon")
     for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
+        # print u"FILE: {}".format(tomboy_note)
         note = convert_tomboy_to_evernote(tomboy_note)
-        evernote.create_or_update_note(note['title'], note['content'], note['notebook'])
+        if note:
+            # print "CONTENTS:{}".format(note['content'])
+            evernote.create_or_update_note(note['title'], note['content'], note['notebook'])
