@@ -1,6 +1,6 @@
 evernote==1.25.0
 httplib2==0.9
+lxml==3.3.5
 oauth2==1.5.211
 sh==1.09
 six==1.7.3
-wsgiref==0.1.2
