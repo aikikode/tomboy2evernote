@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import cgi
 import glob
+import lxml.etree as ET
 import os
-import re
 import urllib
 from evernote.api.client import EvernoteClient
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
-import lxml.etree as ET
-import cgi
 
 __author__ = 'aikikode'
 
@@ -124,13 +123,11 @@ def convert_tomboy_to_evernote(note_path):
     note = {}
 
     title = root.find(el('title')).text
-    title = title.encode('utf-8')
+    title = title.encode('utf-8').lstrip()
 
     # Parse contents
     contentTag = root.find(el('text')).find(el('note-content'))
-    content = innertext(contentTag)
-    content = content.encode('utf-8')
-    content = content.replace(title, '', 1).lstrip()
+    content = innertext(contentTag).encode('utf-8').replace(title, '', 1).lstrip()
     content = ''.join(['{}<br clear="none"/>'.format(line.strip()) for line in content.split('\n')])
 
     note['title'] = title
