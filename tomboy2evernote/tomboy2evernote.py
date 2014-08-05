@@ -5,6 +5,7 @@ import glob
 import lxml.etree as ET
 import os
 import urllib
+from urlparse import urlparse
 from evernote.api.client import EvernoteClient
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
@@ -86,6 +87,8 @@ def convert_tomboy_to_evernote(note_path):
         try:
             if tag.tag == el('url', '/link') and not text.startswith('/'):
                 text = urllib.quote(text.encode('utf-8'), safe="/;%[]=:$&())+,!?*@'~")
+                if not urlparse(text).scheme:
+                    text = "http://{}".format(text)
                 ev_tag = (u'a shape="rect" href="{}"'.format(text), 'a')
                 text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
             else:
