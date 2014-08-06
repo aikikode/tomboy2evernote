@@ -1,6 +1,16 @@
+Jinja2==2.7.3
+MarkupSafe==0.23
+Pygments==1.6
+Sphinx==1.2.2
+cov-core==1.13.0
+coverage==3.7.1
+docutils==0.12
 evernote==1.25.0
 httplib2==0.9
 lxml==3.3.5
 oauth2==1.5.211
+py==1.4.23
+pytest==2.6.0
+pytest-cov==1.7.0
 sh==1.09
 six==1.7.3
