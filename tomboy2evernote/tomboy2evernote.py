@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 import cgi
 import glob
+import isodate
 import lxml.etree as xml
 import os
 import urllib
+import time
 from evernote.api.client import EvernoteClient
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
@@ -25,13 +27,21 @@ class Evernote(EvernoteClient):
         self.token = token
         self.note_store = self.get_note_store()
 
-    def create_or_update_note(self, note_title, note_contents, notebook_name=None):
+    def create_or_update_note(self, new_note):
         """ Create new note or update existing one if there's any with provided tile
         Arguments:
-        note_title    -- note title, should be unique, this field is used to search for existing note
-        note_contents -- note data in ENML markup without <en-note> tags. See https://dev.evernote.com/doc/articles/enml.php
-        notebook_name -- name of the notebook to create note in (ignored on 'update')
+        new_note  -- new note dictionary with the following items:
+          'title'    -- note title, should be unique, this field is used to search for existing note
+          'content'  -- note data in ENML markup without <en-note> tags. See https://dev.evernote.com/doc/articles/enml.php
+          'notebook' -- name of the notebook to create note in (ignored on 'update')
+          'created'  -- note creation time in milliseconds from epoch
+          'updated'  -- note last updated time in milliseconds from epoch
         """
+        note_title = new_note['title']
+        note_contents = new_note['content']
+        notebook_name = new_note['notebook']
+        note_created = new_note['created']
+        note_updated = new_note['updated']
         notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)), 0,
                                                             100, NotesMetadataResultSpec())
         notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
@@ -40,11 +50,14 @@ class Evernote(EvernoteClient):
         for note in notes:
             if note.title == note_title:
                 note.content = note_contents
+                note.created = note_created
+                note.updated = note_updated
                 self.note_store.updateNote(note)
                 break
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
+            note.created, note.updated = note_created, note_updated
             for notebook in self.note_store.listNotebooks():
                 if notebook.name == notebook_name:
                     notebook_guid = notebook.guid
@@ -131,7 +144,12 @@ def convert_tomboy_to_evernote(note_path):
     note = {}
 
     title = root.find(el('title')).text
-    title = title.encode('utf-8').lstrip()
+    if not title:  # title is empty
+        title = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
+    title = title.lstrip()
+    if not title:  # it consisted only of spaces, which is illegal
+        title = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
+    title = title.encode('utf-8')
 
     # Parse contents
     content_tag = root.find(el('text')).find(el('note-content'))
@@ -139,6 +157,9 @@ def convert_tomboy_to_evernote(note_path):
     content = ''.join(['{}<br clear="none"/>'.format(line.strip()) if not line.strip().endswith("</ul>")
                        else "{}".format(line.strip())
                        for line in content.split('\n')])
+
+    for tag, key in [('create-date', 'created'), ('last-change-date', 'updated')]:
+        note[key] = int(time.mktime(isodate.parse_datetime(root.find(el(tag)).text).timetuple())) * 1000  # store as milliseconds
 
     note['title'] = title
     note['content'] = content
@@ -153,4 +174,4 @@ if __name__ == "__main__":
     for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
         note = convert_tomboy_to_evernote(tomboy_note)
         if note:
-            evernote.create_or_update_note(note['title'], note['content'], note['notebook'])
+            evernote.create_or_update_note(note)

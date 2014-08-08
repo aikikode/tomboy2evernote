@@ -7,6 +7,7 @@ coverage==3.7.1
 docutils==0.12
 evernote==1.25.0
 httplib2==0.9
+isodate==0.5.0
 lxml==3.3.5
 oauth2==1.5.211
 py==1.4.23

@@ -1,5 +1,6 @@
 import os
 import tempfile
+import datetime
 import pytest
 from evernote.edam.error.ttypes import EDAMUserException
 from tomboy2evernote.tomboy2evernote import Evernote, convert_tomboy_to_evernote
@@ -22,33 +23,73 @@ class TestEvernote(object):
 
 
 class TestT2EvConverter(object):
-    def test_empty_note_error(self):
-        _, tomboy_note = tempfile.mkstemp()
+    @pytest.fixture
+    def tomboy_note(self, request):
+        _, tmp = tempfile.mkstemp()
+
+        def fin():
+            os.remove(tmp)
+
+        request.addfinalizer(fin)
+        return tmp
+
+    def test_empty_title_error(self, tomboy_note):
+        """ Empty title should be replaced with note creation date """
         with open(tomboy_note, 'w') as f:
             f.write(TOMBOY_HEADER)
             f.write("""<title></title>
-<text xml:space="preserve"><note-content version="0.1"></note-content></text></note>""")
-        try:
-            with pytest.raises(AttributeError):  # Title should never be empty
-                convert_tomboy_to_evernote(tomboy_note)
-        except:
-            raise
-        finally:
-            os.remove(tomboy_note)
+<text xml:space="preserve"><note-content version="0.1"></note-content></text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
+        ev_note = convert_tomboy_to_evernote(tomboy_note)
+        datetime.datetime.strptime(ev_note['title'][:-6], '%Y-%m-%d %H:%M:%S.%f')
 
-    def test_simple_empty_note(self):
-        _, tomboy_note = tempfile.mkstemp()
+    def test_space_title(self, tomboy_note):
+        """ Empty title should be replaced with note creation date """
+        with open(tomboy_note, 'w') as f:
+            f.write(TOMBOY_HEADER)
+            f.write("""<title>    </title>
+<text xml:space="preserve"><note-content version="0.1"></note-content></text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
+        ev_note = convert_tomboy_to_evernote(tomboy_note)
+        datetime.datetime.strptime(ev_note['title'][:-6], '%Y-%m-%d %H:%M:%S.%f')
+
+    def test_title_with_spaces(self, tomboy_note):
+        """ Title should strip spaces only from the left """
+        with open(tomboy_note, 'w') as f:
+            f.write(TOMBOY_HEADER)
+            f.write("""<title>  Hello World  </title>
+<text xml:space="preserve"><note-content version="0.1"></note-content></text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
+        ev_note = convert_tomboy_to_evernote(tomboy_note)
+        assert ev_note['title'] == 'Hello World  '
+
+    def test_simple_empty_note(self, tomboy_note):
         with open(tomboy_note, 'w') as f:
             f.write(TOMBOY_HEADER)
             f.write("""<title>Hello</title>
-<text xml:space="preserve"><note-content version="0.1"></note-content></text></note>""")
-        try:
-            ev_note = convert_tomboy_to_evernote(tomboy_note)
-            assert ev_note['title'] == 'Hello'
-            assert ev_note['content'] == '<br clear="none"/>'
-            assert ev_note['notebook'] is None
-            assert ev_note['tags'] == []
-        except:
-            raise
-        finally:
-            os.remove(tomboy_note)
+<text xml:space="preserve"><note-content version="0.1"></note-content></text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
+        ev_note = convert_tomboy_to_evernote(tomboy_note)
+        assert ev_note['title'] == 'Hello'
+        assert ev_note['content'] == '<br clear="none"/>'
+        assert ev_note['notebook'] is None
+        assert ev_note['tags'] == []
+
+    def test_plain_text_note(self, tomboy_note):
+        with open(tomboy_note, 'w') as f:
+            f.write(TOMBOY_HEADER)
+            f.write("""<title>Hello</title>
+<text xml:space="preserve"><note-content version="0.1"></note-content>This is plain text note.\nNew paragraph\n\nTest Test.</text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
+        ev_note = convert_tomboy_to_evernote(tomboy_note)
+        assert ev_note['content'] == 'This is plain text note.<br clear="none"/>New paragraph<br clear="none"/><br clear="none"/>Test Test.<br clear="none"/>'
