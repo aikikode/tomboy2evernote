@@ -36,7 +36,7 @@ class Evernote(EvernoteClient):
                                                             100, NotesMetadataResultSpec())
         notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
                  for note_data in notes_data_list.notes)
-        note_contents = "{}<en-note>\n{}\n</en-note>".format(self.__EVERNOTE_HEADER, note_contents)
+        note_contents = "{}<en-note>{}</en-note>".format(self.__EVERNOTE_HEADER, note_contents)
         for note in notes:
             if note.title == note_title:
                 note.content = note_contents
@@ -134,9 +134,11 @@ def convert_tomboy_to_evernote(note_path):
     title = title.encode('utf-8').lstrip()
 
     # Parse contents
-    contentTag = root.find(el('text')).find(el('note-content'))
-    content = innertext(contentTag).encode('utf-8').replace(title, '', 1).lstrip()
-    content = ''.join(['{}<br clear="none"/>'.format(line.strip()) for line in content.split('\n')])
+    content_tag = root.find(el('text')).find(el('note-content'))
+    content = innertext(content_tag).encode('utf-8').replace(title, '', 1).lstrip()
+    content = ''.join(['{}<br clear="none"/>'.format(line.strip()) if not line.strip().endswith("</ul>")
+                       else "{}".format(line.strip())
+                       for line in content.split('\n')])
 
     note['title'] = title
     note['content'] = content
