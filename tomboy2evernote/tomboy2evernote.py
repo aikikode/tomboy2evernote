@@ -2,23 +2,24 @@
 # -*- coding: utf-8 -*-
 import cgi
 import glob
-import lxml.etree as ET
+import lxml.etree as xml
 import os
 import urllib
-from urlparse import urlparse
 from evernote.api.client import EvernoteClient
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
+from urlparse import urlparse
 
 __author__ = 'aikikode'
 
-EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                   "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
 EV_DATE_FORMAT = '%Y%m%dT%H%M%SZ'
 TOMBOY_DIR = os.path.join(os.environ['HOME'], ".local", "share", "tomboy")
 
 
 class Evernote(EvernoteClient):
+    __EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                         "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
+
     def __init__(self, token):
         super(Evernote, self).__init__(dev_token=token)
         self.token = token
@@ -35,7 +36,7 @@ class Evernote(EvernoteClient):
                                                             100, NotesMetadataResultSpec())
         notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
                  for note_data in notes_data_list.notes)
-        note_contents = "{}<en-note>\n{}\n</en-note>".format(EVERNOTE_HEADER, note_contents)
+        note_contents = "{}<en-note>\n{}\n</en-note>".format(self.__EVERNOTE_HEADER, note_contents)
         for note in notes:
             if note.title == note_title:
                 note.content = note_contents
@@ -78,6 +79,9 @@ def convert_tomboy_to_evernote(note_path):
                        el('monospace'): ['span style="font-family: \'courier new\', courier, monospace;"', 'span'],
                        el('list'): 'ul',
                        el('list-item'): 'li',
+                       el('small', '/size'): ['span style="font-size: 8pt;"', 'span'],
+                       el('large', '/size'): ['span style="font-size: 14pt;"', 'span'],
+                       el('huge', '/size'): ['span style="font-size: 18pt;"', 'span'],
                        }
 
     def innertext(tag):
@@ -99,15 +103,16 @@ def convert_tomboy_to_evernote(note_path):
                 else:
                     text = u'<{}>{}'.format(ev_tag, text)
                     if ev_tag in ['ul', 'strong']:
-                        tail_text = u'</{}>{}'.format(ev_tag, tag.tail or '')
+                        tail_text = u'</{}>{}'.format(ev_tag, tail_text)
                     else:
-                        tail_text = u'{}</{}>'.format(tag.tail or '', ev_tag)
+                        tail_text = u'{}</{}>'.format(tail_text, ev_tag)
         except KeyError:
+            # Unsupported tag - leave as plain text
             pass
         return u"{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
 
     TOMBOY_CAT_PREFIX = 'system:notebook:'
-    root = ET.parse(note_path).getroot()
+    root = xml.parse(note_path).getroot()
 
     tags = []
     notebook = None
