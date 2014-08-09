@@ -117,3 +117,24 @@ New paragraph</note-content></text>
                                '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
 <en-note>list:<br clear="none"/><ul><li>first&nbsp;element<br clear="none"/></li><li>second&nbsp;element<br clear="none"/><ul><li>deep&nbsp;elem<br clear="none"/></li></ul></li><li>third&nbsp;element</li></ul>New paragraph<br clear="none"/></en-note>''')
+
+    def test_url(self, tomboy_note):
+        pass
+
+    def test_bold(self, tomboy_note):
+        pass
+
+    def test_underline(self, tomboy_note):
+        pass
+
+    def test_bold_underline(self, tomboy_note):
+        pass
+
+    def test_fixed_width_font(self, tomboy_note):
+        pass
+
+    def test_font_sizes(self, tomboy_note):
+        pass
+
+    def test_unsupported_tags(self, tomboy_note):
+        pass
