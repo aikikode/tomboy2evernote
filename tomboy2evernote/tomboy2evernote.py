@@ -184,11 +184,9 @@ def convert_tomboy_to_evernote(note_path):
 
 
 if __name__ == "__main__":
-    dev_token = "S=s1:U=8f228:E=14eee252a16:C=1479673faa8:P=1cd:A=en-devtoken:V=2:H=d748d05b5f513e363d6f9327dd3e47ce"
+    dev_token = ""
     evernote = Evernote(token=dev_token)
-    if True:
-        tomboy_note = "/home/aikikode/.local/share/tomboy/b553a080-8c7e-4e5f-9346-07ee22660a6e.note"
-    # for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
+    for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
         note = convert_tomboy_to_evernote(tomboy_note)
         if note:
             evernote.create_or_update_note(note)
