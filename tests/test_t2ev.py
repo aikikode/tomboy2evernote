@@ -1,6 +1,5 @@
 import os
 import tempfile
-import datetime
 import pytest
 from evernote.edam.error.ttypes import EDAMUserException
 from tomboy2evernote.tomboy2evernote import Evernote, convert_tomboy_to_evernote
@@ -33,6 +32,13 @@ class TestT2EvConverter(object):
         request.addfinalizer(fin)
         return tmp
 
+    def base_content_test(self, note, tomboy_xml, evernote_xml):
+        with open(note, 'w') as f:
+            f.write(TOMBOY_HEADER)
+            f.write(tomboy_xml)
+        ev_note = convert_tomboy_to_evernote(note)
+        assert ev_note['content'] == evernote_xml
+
     def test_empty_title_error(self, tomboy_note):
         """ Empty title should be replaced with note creation date """
         with open(tomboy_note, 'w') as f:
@@ -43,7 +49,7 @@ class TestT2EvConverter(object):
 <last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
 <create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
         ev_note = convert_tomboy_to_evernote(tomboy_note)
-        datetime.datetime.strptime(ev_note['title'][:-6], '%Y-%m-%d %H:%M:%S.%f')
+        assert ev_note['title'] == '2014-08-04 17:59:08.929727+04:00'
 
     def test_space_title(self, tomboy_note):
         """ Empty title should be replaced with note creation date """
@@ -55,7 +61,7 @@ class TestT2EvConverter(object):
 <last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
 <create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
         ev_note = convert_tomboy_to_evernote(tomboy_note)
-        datetime.datetime.strptime(ev_note['title'][:-6], '%Y-%m-%d %H:%M:%S.%f')
+        assert ev_note['title'] == '2014-08-04 17:59:08.929727+04:00'
 
     def test_title_with_spaces(self, tomboy_note):
         """ Title should strip spaces only from the left """
@@ -86,14 +92,28 @@ class TestT2EvConverter(object):
         assert ev_note['tags'] == []
 
     def test_plain_text_note(self, tomboy_note):
-        with open(tomboy_note, 'w') as f:
-            f.write(TOMBOY_HEADER)
-            f.write("""<title>Hello</title>
+        self.base_content_test(tomboy_note,
+                               """<title>Hello</title>
 <text xml:space="preserve"><note-content version="0.1"></note-content>This is plain text note.\nNew paragraph\n\nTest Test.</text>
 <last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
 <last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
-<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
-        ev_note = convert_tomboy_to_evernote(tomboy_note)
-        assert ev_note['content'] == '''<?xml version="1.0" encoding="UTF-8"?>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""",
+                               '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
-<en-note>This is plain text note.<br clear="none"/>New paragraph<br clear="none"/><br clear="none"/>Test Test.<br clear="none"/></en-note>'''
+<en-note>This is plain text note.<br clear="none"/>New paragraph<br clear="none"/><br clear="none"/>Test Test.<br clear="none"/></en-note>''')
+
+    def test_list(self, tomboy_note):
+        self.base_content_test(tomboy_note,
+                               '''<title>Hello</title>
+<text xml:space="preserve"><note-content version="0.1">list:
+<list><list-item dir="ltr">first element
+</list-item><list-item dir="ltr">second element
+<list><list-item dir="ltr">deep elem
+</list-item></list></list-item><list-item dir="ltr">third element</list-item></list>
+New paragraph</note-content></text>
+<last-change-date>2014-08-08T18:02:02.0980690+04:00</last-change-date>
+<last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
+<create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>''',
+                               '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>list:<br clear="none"/><ul><li>first&nbsp;element<br clear="none"/></li><li>second&nbsp;element<br clear="none"/><ul><li>deep&nbsp;elem<br clear="none"/></li></ul></li><li>third&nbsp;element</li></ul>New paragraph<br clear="none"/></en-note>''')
