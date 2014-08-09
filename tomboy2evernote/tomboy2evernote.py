@@ -8,31 +8,53 @@ import os
 import urllib
 import time
 from evernote.api.client import EvernoteClient
+from evernote.edam.limits.constants import EDAM_USER_NOTES_MAX
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
 from urlparse import urlparse
 
 __author__ = 'aikikode'
 
-EV_DATE_FORMAT = '%Y%m%dT%H%M%SZ'
 TOMBOY_DIR = os.path.join(os.environ['HOME'], ".local", "share", "tomboy")
 
 
 class Evernote(EvernoteClient):
-    __EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                         "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
-
     def __init__(self, token):
         super(Evernote, self).__init__(dev_token=token)
         self.token = token
         self.note_store = self.get_note_store()
+
+    def find_note(self, note_title):
+        NOTES_RETRIEVE_COUNT = EDAM_USER_NOTES_MAX
+        start_index = 0
+        remaining = NOTES_RETRIEVE_COUNT
+        notes = []
+        while remaining >= 0:
+            notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)),
+                                                                start_index, NOTES_RETRIEVE_COUNT,
+                                                                NotesMetadataResultSpec())
+            notes += [self.note_store.getNote(note_data.guid, True, False, False, False)
+                      for note_data in notes_data_list.notes]
+
+            total = notes_data_list.totalNotes
+            retrieved = len(notes)
+            start_index += retrieved
+            remaining = total - start_index
+        for note in notes:
+            if note.title == note_title:
+                print "Found the note"
+                return note
+        else:
+            print "Didn't find the note"
+            return None
+
 
     def create_or_update_note(self, new_note):
         """ Create new note or update existing one if there's any with provided tile
         Arguments:
         new_note  -- new note dictionary with the following items:
           'title'    -- note title, should be unique, this field is used to search for existing note
-          'content'  -- note data in ENML markup without <en-note> tags. See https://dev.evernote.com/doc/articles/enml.php
+          'content'  -- note data in ENML markup. See https://dev.evernote.com/doc/articles/enml.php
           'notebook' -- name of the notebook to create note in (ignored on 'update')
           'created'  -- note creation time in milliseconds from epoch
           'updated'  -- note last updated time in milliseconds from epoch
@@ -42,26 +64,19 @@ class Evernote(EvernoteClient):
         notebook_name = new_note['notebook']
         note_created = new_note['created']
         note_updated = new_note['updated']
-        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)), 0,
-                                                            100, NotesMetadataResultSpec())
-        notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
-                 for note_data in notes_data_list.notes)
-        note_contents = "{}<en-note>{}</en-note>".format(self.__EVERNOTE_HEADER, note_contents)
-        for note in notes:
-            if note.title == note_title:
-                note.content = note_contents
-                note.created = note_created
-                note.updated = note_updated
-                self.note_store.updateNote(note)
-                break
+        note = self.find_note(note_title)
+        if note:
+            note.content = note_contents
+            note.created = note_created
+            note.updated = note_updated
+            self.note_store.updateNote(note)
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
             note.created, note.updated = note_created, note_updated
             for notebook in self.note_store.listNotebooks():
                 if notebook.name == notebook_name:
-                    notebook_guid = notebook.guid
-                    note.notebookGuid = notebook_guid
+                    note.notebookGuid = notebook.guid
                     break
             else:
                 if notebook_name:
@@ -73,14 +88,8 @@ class Evernote(EvernoteClient):
             self.note_store.createNote(note)
 
     def cat_note(self, note_title):
-        notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words=u"intitle:\"{}\"".format(note_title)), 0,
-                                                            100, NotesMetadataResultSpec())
-        notes = (self.note_store.getNote(note_data.guid, True, False, False, False)
-                 for note_data in notes_data_list.notes)
-        for note in notes:
-            if note.title == note_title:
-                print note.content
-                break
+        note = self.find_note(note_title)
+        print note.content
 
 
 def convert_tomboy_to_evernote(note_path):
@@ -144,22 +153,28 @@ def convert_tomboy_to_evernote(note_path):
     note = {}
 
     title = root.find(el('title')).text
+    # Empty title should be replaced with note creation date
+    created = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
     if not title:  # title is empty
-        title = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
+        title = created
     title = title.lstrip()
     if not title:  # it consisted only of spaces, which is illegal
-        title = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
+        title = created
     title = title.encode('utf-8')
 
-    # Parse contents
+    # Parse and convert contents to evernote format
+    EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                       "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
     content_tag = root.find(el('text')).find(el('note-content'))
     content = innertext(content_tag).encode('utf-8').replace(title, '', 1).lstrip()
-    content = ''.join(['{}<br clear="none"/>'.format(line.strip()) if not line.strip().endswith("</ul>")
-                       else "{}".format(line.strip())
-                       for line in content.split('\n')])
+    content = "{}<en-note>{}</en-note>".format(EVERNOTE_HEADER, ''.join(['{}<br clear="none"/>'.format(line.strip())
+                                                                         if not line.strip().endswith("</ul>")
+                                                                         else "{}".format(line.strip())
+                                                                         for line in content.split('\n')]))
 
     for tag, key in [('create-date', 'created'), ('last-change-date', 'updated')]:
-        note[key] = int(time.mktime(isodate.parse_datetime(root.find(el(tag)).text).timetuple())) * 1000  # store as milliseconds
+        # store time as milliseconds (https://dev.evernote.com/doc/reference/Types.html#Typedef_Timestamp)
+        note[key] = int(time.mktime(isodate.parse_datetime(root.find(el(tag)).text).timetuple())) * 1000
 
     note['title'] = title
     note['content'] = content
@@ -169,9 +184,11 @@ def convert_tomboy_to_evernote(note_path):
 
 
 if __name__ == "__main__":
-    dev_token = ""
+    dev_token = "S=s1:U=8f228:E=14eee252a16:C=1479673faa8:P=1cd:A=en-devtoken:V=2:H=d748d05b5f513e363d6f9327dd3e47ce"
     evernote = Evernote(token=dev_token)
-    for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
+    if True:
+        tomboy_note = "/home/aikikode/.local/share/tomboy/b553a080-8c7e-4e5f-9346-07ee22660a6e.note"
+    # for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
         note = convert_tomboy_to_evernote(tomboy_note)
         if note:
             evernote.create_or_update_note(note)

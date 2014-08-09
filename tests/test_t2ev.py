@@ -79,7 +79,9 @@ class TestT2EvConverter(object):
 <create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
         ev_note = convert_tomboy_to_evernote(tomboy_note)
         assert ev_note['title'] == 'Hello'
-        assert ev_note['content'] == '<br clear="none"/>'
+        assert ev_note['content'] == '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note><br clear="none"/></en-note>'''
         assert ev_note['notebook'] is None
         assert ev_note['tags'] == []
 
@@ -92,4 +94,6 @@ class TestT2EvConverter(object):
 <last-metadata-change-date>2014-08-08T18:02:02.0980690+04:00</last-metadata-change-date>
 <create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>""")
         ev_note = convert_tomboy_to_evernote(tomboy_note)
-        assert ev_note['content'] == 'This is plain text note.<br clear="none"/>New paragraph<br clear="none"/><br clear="none"/>Test Test.<br clear="none"/>'
+        assert ev_note['content'] == '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>This is plain text note.<br clear="none"/>New paragraph<br clear="none"/><br clear="none"/>Test Test.<br clear="none"/></en-note>'''
