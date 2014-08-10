@@ -42,10 +42,8 @@ class Evernote(EvernoteClient):
             remaining = total - start_index
         for note in notes:
             if note.title == note_title:
-                print "Found the note"
                 return note
         else:
-            print "Didn't find the note"
             return None
 
 
@@ -119,15 +117,12 @@ def convert_tomboy_to_evernote(note_path):
                 text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
             else:
                 ev_tag = tags_convertion[tag.tag]
-                text = text.replace(' ', '&nbsp;')
                 if isinstance(ev_tag, list):
-                    text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
+                    start_tag, end_tag = ev_tag
                 else:
-                    text = u'<{}>{}'.format(ev_tag, text)
-                    if ev_tag in ['ul', 'strong']:
-                        tail_text = u'</{}>{}'.format(ev_tag, tail_text)
-                    else:
-                        tail_text = u'{}</{}>'.format(tail_text, ev_tag)
+                    start_tag = end_tag = ev_tag
+                text = u'<{}>{}'.format(start_tag, text.replace(' ', '&nbsp;'))
+                tail_text = u'</{}>{}'.format(end_tag, tail_text)
         except KeyError:
             # Unsupported tag - leave as plain text
             pass
