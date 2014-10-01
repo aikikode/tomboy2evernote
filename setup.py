@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
     Setup file for tomboy2evernote.
@@ -39,7 +39,7 @@ CLASSIFIERS = ['Development Status :: 4 - Beta',
                'Programming Language :: Python']
 
 # Add here console scripts like ['hello_world = tomboy2evernote.module:function']
-CONSOLE_SCRIPTS = []
+CONSOLE_SCRIPTS = ['t2ev = tomboy2evernote.command_line:main']
 
 # Versioneer configuration
 versioneer.VCS = 'git'

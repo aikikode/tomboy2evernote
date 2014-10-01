@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import glob
 import html
 import isodate
 import lxml.etree as xml
-import os
 import time
 from evernote.api.client import EvernoteClient
 from evernote.edam.limits.constants import EDAM_USER_NOTES_MAX
@@ -14,7 +12,7 @@ from urllib.parse import urlparse, quote
 
 __author__ = 'Denis Kovalev (aikikode)'
 
-TOMBOY_DIR = os.path.join(os.environ['HOME'], ".local", "share", "tomboy")
+DEV_TOKEN = ""
 
 
 class Evernote(EvernoteClient):
@@ -174,12 +172,3 @@ def convert_tomboy_to_evernote(note_path):
     note['tags'] = tags
     note['notebook'] = notebook
     return note
-
-
-if __name__ == "__main__":
-    dev_token = ""
-    evernote = Evernote(token=dev_token)
-    for tomboy_note in glob.glob(os.path.join(TOMBOY_DIR, "*.note")):
-        note = convert_tomboy_to_evernote(tomboy_note)
-        if note:
-            evernote.create_or_update_note(note)
