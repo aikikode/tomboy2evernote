@@ -4,7 +4,7 @@ import pytest
 from evernote.edam.error.ttypes import EDAMUserException
 from tomboy2evernote.tomboy2evernote import Evernote, convert_tomboy_to_evernote
 
-__author__ = 'aikikode'
+__author__ = 'Denis Kovalev (aikikode)'
 
 TOMBOY_HEADER = ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
                  "<note version=\"0.3\" xmlns:link=\"http://beatniksoftware.com/tomboy/link\" "
@@ -209,4 +209,4 @@ normal font
 <create-date>2014-08-04T17:59:08.9297270+04:00</create-date></note>''',
                                '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
-<en-note>Normal text with bla-bla. That\'s it.<br clear="none"/></en-note>''')
+<en-note>Normal text with bla-bla. That&#x27;s it.<br clear="none"/></en-note>''')

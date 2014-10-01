@@ -1,19 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import cgi
 import glob
+import html
 import isodate
 import lxml.etree as xml
 import os
-import urllib
 import time
 from evernote.api.client import EvernoteClient
 from evernote.edam.limits.constants import EDAM_USER_NOTES_MAX
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
-from urlparse import urlparse
+from urllib.parse import urlparse, quote
 
-__author__ = 'aikikode'
+__author__ = 'Denis Kovalev (aikikode)'
 
 TOMBOY_DIR = os.path.join(os.environ['HOME'], ".local", "share", "tomboy")
 
@@ -25,27 +24,27 @@ class Evernote(EvernoteClient):
         self.note_store = self.get_note_store()
 
     def find_note(self, note_title):
-        NOTES_RETRIEVE_COUNT = EDAM_USER_NOTES_MAX
+        notes_retrieve_count = EDAM_USER_NOTES_MAX
         start_index = 0
-        remaining = NOTES_RETRIEVE_COUNT
+        remaining = notes_retrieve_count
         notes = []
-        while remaining >= 0:
+        while remaining > 0:
             notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)),
-                                                                start_index, NOTES_RETRIEVE_COUNT,
+                                                                start_index, notes_retrieve_count,
                                                                 NotesMetadataResultSpec())
-            notes += [self.note_store.getNote(note_data.guid, True, False, False, False)
-                      for note_data in notes_data_list.notes]
+            retrieved_notes = [self.note_store.getNote(note_data.guid, True, False, False, False)
+                               for note_data in notes_data_list.notes]
+            for n in retrieved_notes:
+                if n.title == note_title:
+                    return n
+            notes += retrieved_notes
 
             total = notes_data_list.totalNotes
             retrieved = len(notes)
             start_index += retrieved
             remaining = total - start_index
-        for note in notes:
-            if note.title == note_title:
-                return note
         else:
             return None
-
 
     def create_or_update_note(self, new_note):
         """ Create new note or update existing one if there's any with provided tile
@@ -87,12 +86,12 @@ class Evernote(EvernoteClient):
 
     def cat_note(self, note_title):
         note = self.find_note(note_title)
-        print note.content
+        print(note.content)
 
 
 def convert_tomboy_to_evernote(note_path):
     def el(name, parent=''):
-        return u"{{http://beatniksoftware.com/tomboy{}}}{}".format(parent, name)
+        return "{{http://beatniksoftware.com/tomboy{}}}{}".format(parent, name)
 
     tags_convertion = {el('bold'): 'strong',
                        el('underline'): ['span style="text-decoration: underline;"', 'span'],
@@ -106,27 +105,27 @@ def convert_tomboy_to_evernote(note_path):
 
     def innertext(tag):
         """Convert Tomboy XML to Markdown"""
-        text = cgi.escape(tag.text or '')
-        tail_text = cgi.escape(u'{}'.format(tag.tail or ''))
+        text = html.escape(tag.text or '')
+        tail_text = html.escape('{}'.format(tag.tail or ''))
         try:
             if tag.tag == el('url', '/link') and not text.startswith('/'):
-                text = urllib.quote(text.encode('utf-8'), safe="/;%[]=:$&())+,!?*@'~")
+                text = quote(text, safe="/;%[]=:$&())+,!?*@'~")
                 if not urlparse(text).scheme:
                     text = "http://{}".format(text)
-                ev_tag = (u'a shape="rect" href="{}"'.format(text), 'a')
-                text = u'<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
+                ev_tag = ('a shape="rect" href="{}"'.format(text), 'a')
+                text = '<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
             else:
                 ev_tag = tags_convertion[tag.tag]
                 if isinstance(ev_tag, list):
                     start_tag, end_tag = ev_tag
                 else:
                     start_tag = end_tag = ev_tag
-                text = u'<{}>{}'.format(start_tag, text.replace(' ', '&nbsp;'))
-                tail_text = u'</{}>{}'.format(end_tag, tail_text)
+                text = '<{}>{}'.format(start_tag, text.replace(' ', '&nbsp;'))
+                tail_text = '</{}>{}'.format(end_tag, tail_text)
         except KeyError:
             # Unsupported tag - leave as plain text
             pass
-        return u"{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
+        return "{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
 
     TOMBOY_CAT_PREFIX = 'system:notebook:'
     root = xml.parse(note_path).getroot()
@@ -155,13 +154,12 @@ def convert_tomboy_to_evernote(note_path):
     title = title.lstrip()
     if not title:  # it consisted only of spaces, which is illegal
         title = created
-    title = title.encode('utf-8')
 
     # Parse and convert contents to evernote format
     EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                        "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
     content_tag = root.find(el('text')).find(el('note-content'))
-    content = innertext(content_tag).encode('utf-8').replace(title, '', 1).lstrip()
+    content = innertext(content_tag).replace(title, '', 1).lstrip()
     content = "{}<en-note>{}</en-note>".format(EVERNOTE_HEADER, ''.join(['{}<br clear="none"/>'.format(line.strip())
                                                                          if not line.strip().endswith("</ul>")
                                                                          else "{}".format(line.strip())
