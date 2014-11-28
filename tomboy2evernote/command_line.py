@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import argparse
 import glob
 import os
-from tomboy2evernote.tomboy2evernote import Evernote, DEV_TOKEN, convert_tomboy_to_evernote
 from datetime import timedelta, date
+import sys
+
+from evernote.edam.error.ttypes import EDAMUserException
+
+from tomboy2evernote.tomboy2evernote import Evernote, DEV_TOKEN, convert_tomboy_to_evernote
 
 __author__ = 'Denis Kovalev (aikikode)'
 
@@ -32,7 +37,10 @@ def convert_all_tomboy_notes(modified_time):
     notes_files = list(filter(lambda f: delta > today - date.fromtimestamp(os.path.getmtime(f)),
                               glob.glob(os.path.join(TOMBOY_DIR, "*.note"))))
     total_notes = len(notes_files)
-    evernote = Evernote(token=DEV_TOKEN)
+    try:
+        evernote = Evernote(token=DEV_TOKEN)
+    except EDAMUserException as ex:
+        sys.exit(ex.errorCode)
     for idx, tomboy_note in enumerate(notes_files):
         print("[{}/{}]:".format(idx + 1, total_notes), end=" ")
         ev_note = convert_tomboy_to_evernote(tomboy_note)

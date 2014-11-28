@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import html
+import time
+from urllib.parse import urlparse, quote
+
 import isodate
 import lxml.etree as xml
-import time
+
 from evernote.api.client import EvernoteClient
+from evernote.edam.error.ttypes import EDAMUserException
 from evernote.edam.limits.constants import EDAM_USER_NOTES_MAX
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
-from urllib.parse import urlparse, quote
+
+import logging
+logger = logging.getLogger(__name__)
 
 __author__ = 'Denis Kovalev (aikikode)'
 
@@ -19,7 +26,11 @@ class Evernote(EvernoteClient):
     def __init__(self, token):
         super(Evernote, self).__init__(dev_token=token)
         self.token = token
-        self.note_store = self.get_note_store()
+        try:
+            self.note_store = self.get_note_store()
+        except EDAMUserException as ex:
+            logger.error('ERROR: Authorization failed. Make sure you have correct token.')
+            raise ex
 
     def find_note(self, note_title):
         notes_retrieve_count = EDAM_USER_NOTES_MAX
@@ -54,11 +65,11 @@ class Evernote(EvernoteClient):
           'created'  -- note creation time in milliseconds from epoch
           'updated'  -- note last updated time in milliseconds from epoch
         """
-        note_title = new_note['title']
-        note_contents = new_note['content']
-        notebook_name = new_note['notebook']
-        note_created = new_note['created']
-        note_updated = new_note['updated']
+        note_title = new_note.get('title')
+        note_contents = new_note.get('content')
+        notebook_name = new_note.get('notebook')
+        note_created = new_note.get('created')
+        note_updated = new_note.get('updated')
         note = self.find_note(note_title)
         if note:
             note.content = note_contents
@@ -84,7 +95,8 @@ class Evernote(EvernoteClient):
 
     def cat_note(self, note_title):
         note = self.find_note(note_title)
-        print(note.content)
+        if note:
+            print(note.content)
 
 
 def convert_tomboy_to_evernote(note_path):
