@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 __author__ = 'Denis Kovalev (aikikode)'
 
-DEV_TOKEN = ""
+DEV_TOKEN = ''
 
 
 class Evernote(EvernoteClient):
@@ -38,7 +38,7 @@ class Evernote(EvernoteClient):
         remaining = notes_retrieve_count
         notes = []
         while remaining > 0:
-            notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words="intitle:\"{}\"".format(note_title)),
+            notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words='intitle:"{}"'.format(note_title)),
                                                                 start_index, notes_retrieve_count,
                                                                 NotesMetadataResultSpec())
             retrieved_notes = [self.note_store.getNote(note_data.guid, True, False, False, False)
@@ -101,7 +101,7 @@ class Evernote(EvernoteClient):
 
 def convert_tomboy_to_evernote(note_path):
     def el(name, parent=''):
-        return "{{http://beatniksoftware.com/tomboy{}}}{}".format(parent, name)
+        return '{{http://beatniksoftware.com/tomboy{}}}{}'.format(parent, name)
 
     tags_convertion = {el('bold'): 'strong',
                        el('underline'): ['span style="text-decoration: underline;"', 'span'],
@@ -121,7 +121,7 @@ def convert_tomboy_to_evernote(note_path):
             if tag.tag == el('url', '/link') and not text.startswith('/'):
                 text = quote(text, safe="/;%[]=:$&())+,!?*@'~")
                 if not urlparse(text).scheme:
-                    text = "http://{}".format(text)
+                    text = 'http://{}'.format(text)
                 ev_tag = ('a shape="rect" href="{}"'.format(text), 'a')
                 text = '<{}>{}</{}>'.format(ev_tag[0], text, ev_tag[1])
             else:
@@ -135,7 +135,7 @@ def convert_tomboy_to_evernote(note_path):
         except KeyError:
             # Unsupported tag - leave as plain text
             pass
-        return "{}{}{}".format(text, ''.join(innertext(e) for e in tag), tail_text)
+        return '{}{}{}'.format(text, ''.join(innertext(e) for e in tag), tail_text)
 
     TOMBOY_CAT_PREFIX = 'system:notebook:'
     root = xml.parse(note_path).getroot()
@@ -158,7 +158,7 @@ def convert_tomboy_to_evernote(note_path):
 
     title = root.find(el('title')).text
     # Empty title should be replaced with note creation date
-    created = "{}".format(isodate.parse_datetime(root.find(el('create-date')).text))
+    created = '{}'.format(isodate.parse_datetime(root.find(el('create-date')).text))
     if not title:  # title is empty
         title = created
     title = title.lstrip()
@@ -170,9 +170,9 @@ def convert_tomboy_to_evernote(note_path):
                        "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
     content_tag = root.find(el('text')).find(el('note-content'))
     content = innertext(content_tag).replace(title, '', 1).lstrip()
-    content = "{}<en-note>{}</en-note>".format(EVERNOTE_HEADER, ''.join(['{}<br clear="none"/>'.format(line.strip())
-                                                                         if not line.strip().endswith("</ul>")
-                                                                         else "{}".format(line.strip())
+    content = '{}<en-note>{}</en-note>'.format(EVERNOTE_HEADER, ''.join(['{}<br clear="none"/>'.format(line.strip())
+                                                                         if not line.strip().endswith('</ul>')
+                                                                         else '{}'.format(line.strip())
                                                                          for line in content.split('\n')]))
 
     for tag, key in [('create-date', 'created'), ('last-change-date', 'updated')]:
