@@ -130,7 +130,7 @@ def convert_tomboy_to_evernote(note_path):
 
     def innertext(tag):
         """Convert Tomboy XML to Markdown"""
-        text = tag.text
+        text = tag.text or ''
         tail_text = html.escape('{}'.format(tag.tail or ''))
         try:
             if tag.tag == el('url', '/link') and not text.startswith('/'):
