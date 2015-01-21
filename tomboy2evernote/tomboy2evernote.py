@@ -25,17 +25,23 @@ class Evernote(EvernoteClient):
         super(Evernote, self).__init__(dev_token=token, sandbox=False)
         self.token = token
         try:
-            self.note_store = self.get_note_store()
+            self.note_store = Evernote.call_method(self.get_note_store)
         except EDAMUserException as ex:
             logger.error('ERROR: Authorization failed. Maybe your dev token expired?')
             raise ex
+
+    @staticmethod
+    def call_method(command, *args, **kwargs):
+        try:
+            result = command(*args, **kwargs)
         except EDAMSystemException as ex:
             if ex.errorCode == EDAMErrorCode.RATE_LIMIT_REACHED:
                 logger.error('ERROR: Upload rate too high, waiting for {} seconds'.format(ex.rateLimitDuration))
                 time.sleep(ex.rateLimitDuration + 2)
-                self.note_store = self.get_note_store()
+                result = command(*args, **kwargs)
             else:
                 raise ex
+        return result
 
     def find_note(self, note_title):
         notes_retrieve_count = EDAM_USER_NOTES_MAX
@@ -43,12 +49,13 @@ class Evernote(EvernoteClient):
         remaining = notes_retrieve_count
         notes = []
         while remaining > 0:
-            notes_data_list = self.note_store.findNotesMetadata(
+            notes_data_list = Evernote.call_method(
+                self.note_store.findNotesMetadata,
                 NoteFilter(words='intitle:"{}"'.format(note_title)),
                 start_index, notes_retrieve_count, NotesMetadataResultSpec()
             )
             retrieved_notes = [
-                self.note_store.getNote(note_data.guid, True, False, False, False)
+                Evernote.call_method(self.note_store.getNote, note_data.guid, True, False, False, False)
                 for note_data in notes_data_list.notes
             ]
             for n in retrieved_notes:
@@ -83,18 +90,12 @@ class Evernote(EvernoteClient):
             note.content = note_contents
             note.created = note_created
             note.updated = note_updated
-            try:
-                self.note_store.updateNote(note)
-            except EDAMSystemException as ex:
-                if ex.errorCode == EDAMErrorCode.RATE_LIMIT_REACHED:
-                    logger.error('Upload rate too high, waiting for {} seconds'.format(ex.rateLimitDuration))
-                    time.sleep(ex.rateLimitDuration + 2)
-                    self.note_store.updateNote(note)
+            Evernote.call_method(self.note_store.updateNote, note)
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
             note.created, note.updated = note_created, note_updated
-            for notebook in self.note_store.listNotebooks():
+            for notebook in Evernote.call_method(self.note_store.listNotebooks):
                 if notebook.name == notebook_name:
                     note.notebookGuid = notebook.guid
                     break
@@ -103,9 +104,9 @@ class Evernote(EvernoteClient):
                     # Notebook not found, create new one
                     notebook = Notebook()
                     notebook.name = notebook_name
-                    notebook = self.note_store.createNotebook(notebook)
+                    notebook = Evernote.call_method(self.note_store.createNotebook, notebook)
                     note.notebookGuid = notebook.guid
-            self.note_store.createNote(note)
+            Evernote.call_method(self.note_store.createNote, note)
 
     def cat_note(self, note_title):
         note = self.find_note(note_title)
