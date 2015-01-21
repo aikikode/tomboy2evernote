@@ -9,7 +9,7 @@ import isodate
 import lxml.etree as xml
 
 from evernote.api.client import EvernoteClient
-from evernote.edam.error.ttypes import EDAMUserException
+from evernote.edam.error.ttypes import EDAMUserException, EDAMSystemException, EDAMErrorCode
 from evernote.edam.limits.constants import EDAM_USER_NOTES_MAX
 from evernote.edam.notestore.ttypes import NoteFilter, NotesMetadataResultSpec
 from evernote.edam.type.ttypes import Note, Notebook
@@ -29,6 +29,13 @@ class Evernote(EvernoteClient):
         except EDAMUserException as ex:
             logger.error('ERROR: Authorization failed. Maybe your dev token expired?')
             raise ex
+        except EDAMSystemException as ex:
+            if ex.errorCode == EDAMErrorCode.RATE_LIMIT_REACHED:
+                logger.error('ERROR: Upload rate too high, waiting for {} seconds'.format(ex.rateLimitDuration))
+                time.sleep(ex.rateLimitDuration + 2)
+                self.note_store = self.get_note_store()
+            else:
+                raise ex
 
     def find_note(self, note_title):
         notes_retrieve_count = EDAM_USER_NOTES_MAX
@@ -76,7 +83,13 @@ class Evernote(EvernoteClient):
             note.content = note_contents
             note.created = note_created
             note.updated = note_updated
-            self.note_store.updateNote(note)
+            try:
+                self.note_store.updateNote(note)
+            except EDAMSystemException as ex:
+                if ex.errorCode == EDAMErrorCode.RATE_LIMIT_REACHED:
+                    logger.error('Upload rate too high, waiting for {} seconds'.format(ex.rateLimitDuration))
+                    time.sleep(ex.rateLimitDuration + 2)
+                    self.note_store.updateNote(note)
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
@@ -121,7 +134,7 @@ def convert_tomboy_to_evernote(note_path):
         tail_text = html.escape('{}'.format(tag.tail or ''))
         try:
             if tag.tag == el('url', '/link') and not text.startswith('/'):
-                text = quote(text, safe="/;%[]=:$&())+,!?*@'~")
+                text = quote(text, safe="/;%[]=:$())+,!?*@'~")
                 if not urlparse(text).scheme:
                     text = 'http://{}'.format(text)
                 ev_tag = ('a shape="rect" href="{}"'.format(text), 'a')
