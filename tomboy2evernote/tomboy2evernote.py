@@ -19,17 +19,15 @@ logger = logging.getLogger(__name__)
 
 __author__ = 'Denis Kovalev (aikikode)'
 
-DEV_TOKEN = ''
-
 
 class Evernote(EvernoteClient):
     def __init__(self, token):
-        super(Evernote, self).__init__(dev_token=token)
+        super(Evernote, self).__init__(dev_token=token, sandbox=False)
         self.token = token
         try:
             self.note_store = self.get_note_store()
         except EDAMUserException as ex:
-            logger.error('ERROR: Authorization failed. Make sure you have correct token.')
+            logger.error('ERROR: Authorization failed. Maybe your dev token expired?')
             raise ex
 
     def find_note(self, note_title):
@@ -38,11 +36,14 @@ class Evernote(EvernoteClient):
         remaining = notes_retrieve_count
         notes = []
         while remaining > 0:
-            notes_data_list = self.note_store.findNotesMetadata(NoteFilter(words='intitle:"{}"'.format(note_title)),
-                                                                start_index, notes_retrieve_count,
-                                                                NotesMetadataResultSpec())
-            retrieved_notes = [self.note_store.getNote(note_data.guid, True, False, False, False)
-                               for note_data in notes_data_list.notes]
+            notes_data_list = self.note_store.findNotesMetadata(
+                NoteFilter(words='intitle:"{}"'.format(note_title)),
+                start_index, notes_retrieve_count, NotesMetadataResultSpec()
+            )
+            retrieved_notes = [
+                self.note_store.getNote(note_data.guid, True, False, False, False)
+                for note_data in notes_data_list.notes
+            ]
             for n in retrieved_notes:
                 if n.title == note_title:
                     return n
@@ -103,15 +104,16 @@ def convert_tomboy_to_evernote(note_path):
     def el(name, parent=''):
         return '{{http://beatniksoftware.com/tomboy{}}}{}'.format(parent, name)
 
-    tags_convertion = {el('bold'): 'strong',
-                       el('underline'): ['span style="text-decoration: underline;"', 'span'],
-                       el('monospace'): ['span style="font-family: \'courier new\', courier, monospace;"', 'span'],
-                       el('list'): 'ul',
-                       el('list-item'): 'li',
-                       el('small', '/size'): ['span style="font-size: 8pt;"', 'span'],
-                       el('large', '/size'): ['span style="font-size: 14pt;"', 'span'],
-                       el('huge', '/size'): ['span style="font-size: 18pt;"', 'span'],
-                       }
+    tags_convertion = {
+        el('bold'): 'strong',
+        el('underline'): ['span style="text-decoration: underline;"', 'span', ],
+        el('monospace'): ['span style="font-family: \'courier new\', courier, monospace;"', 'span', ],
+        el('list'): 'ul',
+        el('list-item'): 'li',
+        el('small', '/size'): ['span style="font-size: 8pt;"', 'span', ],
+        el('large', '/size'): ['span style="font-size: 14pt;"', 'span', ],
+        el('huge', '/size'): ['span style="font-size: 18pt;"', 'span', ],
+    }
 
     def innertext(tag):
         """Convert Tomboy XML to Markdown"""
@@ -137,7 +139,7 @@ def convert_tomboy_to_evernote(note_path):
             pass
         return '{}{}{}'.format(text, ''.join(innertext(e) for e in tag), tail_text)
 
-    TOMBOY_CAT_PREFIX = 'system:notebook:'
+    tomboy_cat_prefix = 'system:notebook:'
     root = xml.parse(note_path).getroot()
 
     tags = []
@@ -147,8 +149,8 @@ def convert_tomboy_to_evernote(note_path):
     if tagsEl is not None:
         for tagEl in tagsEl:
             tag = tagEl.text
-            if tag.startswith(TOMBOY_CAT_PREFIX):
-                notebook = tag.replace(TOMBOY_CAT_PREFIX, '')
+            if tag.startswith(tomboy_cat_prefix):
+                notebook = tag.replace(tomboy_cat_prefix, '')
             else:
                 tags.append(tag)
     if 'system:template' in tags:
@@ -166,16 +168,22 @@ def convert_tomboy_to_evernote(note_path):
         title = created
 
     # Parse and convert contents to evernote format
-    EVERNOTE_HEADER = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-                       "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n")
+    evernote_header = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!DOCTYPE en-note SYSTEM \"http://xml.evernote.com/pub/enml2.dtd\">\n"
+    )
     content_tag = root.find(el('text')).find(el('note-content'))
     content = innertext(content_tag).replace(title, '', 1).lstrip()
-    content = '{}<en-note>{}</en-note>'.format(EVERNOTE_HEADER, ''.join(['{}<br clear="none"/>'.format(line.strip())
-                                                                         if not line.strip().endswith('</ul>')
-                                                                         else '{}'.format(line.strip())
-                                                                         for line in content.split('\n')]))
+    content = '{}<en-note>{}</en-note>'.format(
+        evernote_header, ''.join([
+            '{}<br clear="none"/>'.format(line.strip())
+            if not line.strip().endswith('</ul>')
+            else '{}'.format(line.strip())
+            for line in content.split('\n')
+        ])
+    )
 
-    for tag, key in [('create-date', 'created'), ('last-change-date', 'updated')]:
+    for tag, key in [('create-date', 'created'), ('last-change-date', 'updated'), ]:
         # store time as milliseconds (https://dev.evernote.com/doc/reference/Types.html#Typedef_Timestamp)
         note[key] = int(time.mktime(isodate.parse_datetime(root.find(el(tag)).text).timetuple())) * 1000
 

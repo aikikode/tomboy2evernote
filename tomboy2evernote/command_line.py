@@ -2,18 +2,42 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from datetime import timedelta, date
 import glob
 import os
-from datetime import timedelta, date
 import sys
 
 from evernote.edam.error.ttypes import EDAMUserException
 
-from tomboy2evernote.tomboy2evernote import Evernote, DEV_TOKEN, convert_tomboy_to_evernote
+from tomboy2evernote.tomboy2evernote import Evernote, convert_tomboy_to_evernote
 
 __author__ = 'Denis Kovalev (aikikode)'
 
 TOMBOY_DIR = os.path.join(os.environ['HOME'], ".local", "share", "tomboy")
+CONFIG_DIR = os.path.join(os.path.expanduser('~'), '.config', 't2ev')
+if not os.path.isdir(CONFIG_DIR):
+    os.mkdir(CONFIG_DIR)
+if CONFIG_DIR not in sys.path:
+    sys.path.append(CONFIG_DIR)
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'settings.py')
+
+import logging
+logger = logging.getLogger(__name__)
+
+
+def get_token():
+    try:
+        from settings import DEV_TOKEN
+    except ImportError:
+        DEV_TOKEN = ''
+        with open(CONFIG_FILE, 'w') as config_file:
+            config_file.write("DEV_TOKEN = ''")
+    if not DEV_TOKEN:
+        logger.error(
+            'Please, get new Evernote development token from the site and put it into the\n'
+            '{} file. E.g.: DEV_TOKEN = "12345"'.format(CONFIG_FILE)
+        )
+    return DEV_TOKEN
 
 
 def main():
@@ -38,7 +62,7 @@ def convert_all_tomboy_notes(modified_time):
                               glob.glob(os.path.join(TOMBOY_DIR, "*.note"))))
     total_notes = len(notes_files)
     try:
-        evernote = Evernote(token=DEV_TOKEN)
+        evernote = Evernote(token=get_token())
     except EDAMUserException as ex:
         sys.exit(ex.errorCode)
     for idx, tomboy_note in enumerate(notes_files):
