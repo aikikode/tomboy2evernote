@@ -1,14 +1,16 @@
 tomboy2evernote
 ===============
-
 [Tomboy](https://wiki.gnome.org/Apps/Tomboy) to [Evernote](https://evernote.com) export tool  
 
-See [Tomboy notes format](https://wiki.gnome.org/Apps/Tomboy/NoteXmlFormat).
 
 Installation
 ============
-
-``python ./setup.py install``  
+1. Install Evernote SDK for Python 3  
+  [Download it](https://github.com/evernote/evernote-sdk-python3), extract and run  
+  ``python ./setup.py install``  
+2. Install Tomboy2Evernote  
+  Download sources and run  
+  ``python ./setup.py install``  
 
 Usage
 =====
@@ -19,9 +21,6 @@ Usage
 * Get all options:  
 ``t2ev --help``  
 
-Packaging
-=========
-
-Run ``python setup.py sdist``, ``python setup.py bdist`` or
-``python setup.py bdist_wheel`` to build a source, binary or wheel
-distribution.
+Other
+=====
+See [Tomboy notes format](https://wiki.gnome.org/Apps/Tomboy/NoteXmlFormat).
