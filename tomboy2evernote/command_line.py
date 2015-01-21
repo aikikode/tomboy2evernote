@@ -65,15 +65,25 @@ def convert_all_tomboy_notes(modified_time):
         evernote = Evernote(token=get_token())
     except EDAMUserException as ex:
         sys.exit(ex.errorCode)
+    failed_notes = []
     for idx, tomboy_note in enumerate(notes_files):
         print("[{}/{}]:".format(idx + 1, total_notes), end=" ")
         ev_note = convert_tomboy_to_evernote(tomboy_note)
         if ev_note:
             print("Converted '{}'. Uploading...".format(ev_note['title']), end=" ")
-            evernote.create_or_update_note(ev_note)
-            print("OK")
+            try:
+                evernote.create_or_update_note(ev_note)
+            except:
+                failed_notes.append(ev_note['title'])
+                print("FAILED")
+            else:
+                print("OK")
         else:
             print("Skipped template note")
+    if failed_notes:
+        print("The following notes failed to upload:")
+        for idx, note_title in enumerate(failed_notes):
+            print("[{}]: '{}'".format(idx + 1, note_title))
 
 
 if __name__ == "__main__":
