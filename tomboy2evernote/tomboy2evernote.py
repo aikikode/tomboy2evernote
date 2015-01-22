@@ -113,6 +113,11 @@ class Evernote(EvernoteClient):
         if note:
             print(note.content)
 
+    def remove_note(self, note_title):
+        note = self.find_note(note_title)
+        if note:
+            Evernote.call_method(self.note_store.deleteNote, note.guid)
+
 
 def convert_tomboy_to_evernote(note_path):
     def el(name, parent=''):

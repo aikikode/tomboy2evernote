@@ -11,6 +11,7 @@ isodate==0.5.1
 lxml==3.4.1
 oauthlib==0.7.2
 py==1.4.26
+pyinotify==0.9.5
 pytest==2.6.4
 pytest-cov==1.8.1
 requests==2.5.1
