@@ -49,13 +49,19 @@ def main():
                         help='Upload only notes modified during this period. Default: day', required=False)
     parser.add_argument('-d', '--daemon', action='store_true', help='Run as daemon', required=False)
     args = parser.parse_args()
+
+    try:
+        evernote = Evernote(token=get_token())
+    except EDAMUserException as ex:
+        sys.exit(ex.errorCode)
+
     if args.daemon:
-        run_as_daemon()
+        run_as_daemon(evernote)
     else:
-        convert_all_tomboy_notes(args.t)
+        convert_all_tomboy_notes(evernote, args.t)
 
 
-def convert_all_tomboy_notes(modified_time=None):
+def convert_all_tomboy_notes(evernote, modified_time=None):
     delta = timedelta.max
     if modified_time == 'day':
         delta = timedelta(days=1)
@@ -67,10 +73,6 @@ def convert_all_tomboy_notes(modified_time=None):
     notes_files = list(filter(lambda f: delta > today - date.fromtimestamp(os.path.getmtime(f)),
                               glob.glob(os.path.join(TOMBOY_DIR, "*.note"))))
     total_notes = len(notes_files)
-    try:
-        evernote = Evernote(token=get_token())
-    except EDAMUserException as ex:
-        sys.exit(ex.errorCode)
     failed_notes = []
     notes_hash = dict()
     for idx, tomboy_note in enumerate(notes_files):
@@ -92,12 +94,12 @@ def convert_all_tomboy_notes(modified_time=None):
         print('The following notes failed to upload:')
         for idx, note_title in enumerate(failed_notes):
             print('[{}]: \'{}\''.format(idx + 1, note_title))
-    return evernote, notes_hash
+    return notes_hash
 
 
-def run_as_daemon():
+def run_as_daemon(evernote_client):
     # First we need to get all current notes and their titles to correctly handle note deletion
-    evernote_client, notes = convert_all_tomboy_notes()
+    notes = convert_all_tomboy_notes(evernote_client)
 
     # Configure daemon
     wm = pyinotify.WatchManager()
@@ -121,29 +123,27 @@ def run_as_daemon():
         def process_IN_MOVED_TO(self, event):
             # New note / Modify note
             tomboy_note = event.pathname
-            print('IN_MOVED_TO: {}'.format(tomboy_note))
             if os.path.isfile(tomboy_note) and os.path.splitext(tomboy_note)[1] == '.note':
                 ev_note = convert_tomboy_to_evernote(tomboy_note)
                 if ev_note:
                     try:
                         self.evernote.create_or_update_note(ev_note)
                         self.notes_hash[tomboy_note] = ev_note['title']
-                        print('Updated \'{}\''.format(ev_note['title']))
+                        logger.info('Updated \'{}\''.format(ev_note['title']))
                     except:
-                        print('ERROR: Failed to upload \'{}\' note'.format(ev_note['title']))
+                        logger.error('ERROR: Failed to upload \'{}\' note'.format(ev_note['title']))
 
         def process_IN_MOVED_FROM(self, event):
             # Delete note
             tomboy_note = event.pathname
-            print('IN_MOVED_FROM: {}'.format(tomboy_note))
             note_title = self.notes_hash.get(tomboy_note)
             if note_title:
                 try:
                     self.evernote.remove_note(note_title)
-                    print('Deleted \'{}\''.format(note_title))
+                    logger.info('Deleted \'{}\''.format(note_title))
                     self.notes_hash.pop(tomboy_note, None)
                 except:
-                    print('ERROR: Failed to delete "{}" note'.format(note_title))
+                    logger.error('ERROR: Failed to delete "{}" note'.format(note_title))
 
     handler = EventHandler(evernote=evernote_client, notes_hash=notes)
     notifier = pyinotify.Notifier(wm, handler)
@@ -155,4 +155,4 @@ def run_as_daemon():
 
 
 if __name__ == "__main__":
-    main()
+    ()
