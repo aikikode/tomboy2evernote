@@ -216,5 +216,6 @@ def convert_tomboy_to_evernote(note_path):
     note['title'] = title
     note['content'] = content
     note['tags'] = tags
-    note['notebook'] = notebook
+    if notebook:
+        note['notebook'] = notebook
     return note
