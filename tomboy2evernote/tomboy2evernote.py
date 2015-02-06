@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 __author__ = 'Denis Kovalev (aikikode)'
 
 
+DEFAULT_EVERNOTE_NOTEBOOK = 'Tomboy'
+
+
 class Evernote(EvernoteClient):
     def __init__(self, token):
         super(Evernote, self).__init__(dev_token=token, sandbox=False)
@@ -76,37 +79,40 @@ class Evernote(EvernoteClient):
         new_note  -- new note dictionary with the following items:
           'title'    -- note title, should be unique, this field is used to search for existing note
           'content'  -- note data in ENML markup. See https://dev.evernote.com/doc/articles/enml.php
-          'notebook' -- name of the notebook to create note in (ignored on 'update')
+          'notebook' -- name of the notebook
           'created'  -- note creation time in milliseconds from epoch
           'updated'  -- note last updated time in milliseconds from epoch
         """
         note_title = new_note.get('title')
         note_contents = new_note.get('content')
-        notebook_name = new_note.get('notebook')
+        notebook_name = new_note.get('notebook', DEFAULT_EVERNOTE_NOTEBOOK)
         note_created = new_note.get('created')
         note_updated = new_note.get('updated')
+
+        # Find or create notebook for the note
+        for notebook in Evernote.call_method(self.note_store.listNotebooks):
+            if notebook.name == notebook_name:
+                notebook_guid = notebook.guid
+                break
+        else:
+            # Notebook not found, create new one
+            notebook = Notebook()
+            notebook.name = notebook_name
+            notebook = Evernote.call_method(self.note_store.createNotebook, notebook)
+            notebook_guid = notebook.guid
+
+        # Find or create note
         note = self.find_note(note_title)
         if note:
             note.content = note_contents
             note.created = note_created
             note.updated = note_updated
-            Evernote.call_method(self.note_store.updateNote, note)
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
             note.created, note.updated = note_created, note_updated
-            for notebook in Evernote.call_method(self.note_store.listNotebooks):
-                if notebook.name == notebook_name:
-                    note.notebookGuid = notebook.guid
-                    break
-            else:
-                if notebook_name:
-                    # Notebook not found, create new one
-                    notebook = Notebook()
-                    notebook.name = notebook_name
-                    notebook = Evernote.call_method(self.note_store.createNotebook, notebook)
-                    note.notebookGuid = notebook.guid
-            Evernote.call_method(self.note_store.createNote, note)
+        note.notebookGuid = notebook_guid
+        Evernote.call_method(self.note_store.createNote, note)
 
     def cat_note(self, note_title):
         note = self.find_note(note_title)
