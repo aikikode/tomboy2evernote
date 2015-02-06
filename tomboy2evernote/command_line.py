@@ -155,4 +155,4 @@ def run_as_daemon(evernote_client):
 
 
 if __name__ == "__main__":
-    ()
+    main()
