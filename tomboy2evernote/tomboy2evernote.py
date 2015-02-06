@@ -107,6 +107,8 @@ class Evernote(EvernoteClient):
             note.content = note_contents
             note.created = note_created
             note.updated = note_updated
+            if note.notebookGuid != notebook_guid:
+                Evernote.call_method(self.note_store.deleteNote, note.guid)
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
