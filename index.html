@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Tomboy2evernote : Tomboy to Evernote export and synchronization tool">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Tomboy2evernote</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/aikikode/tomboy2evernote">View on GitHub</a>
+
+          <h1 id="project_title">Tomboy2evernote</h1>
+          <h2 id="project_tagline">Tomboy to Evernote export and synchronization tool</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/aikikode/tomboy2evernote/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/aikikode/tomboy2evernote/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="tomboy2evernote" class="anchor" href="#tomboy2evernote" aria-hidden="true"><span class="octicon octicon-link"></span></a>tomboy2evernote</h1>
+
+<p><a href="https://wiki.gnome.org/Apps/Tomboy">Tomboy</a> to <a href="https://evernote.com">Evernote</a> export and synchronization tool.  </p>
+
+<p>I love Tomboy notes: they are clean, easy to use, multiplatform notes with no unnecessary functionality.
+I've been using them for a long time both for work and for personal notes.  </p>
+
+<p>Sometimes I need to review some notes, but I'm away from my PC.
+Unfortunately there's no Tomboy phone application since it's not client/server app and all your notes are stored locally.<br>
+Luckily, there's another notes service which is client/server and provides the corresponding application - Evernote.
+But is has its own drawbacks: no offline notes editing (it exists, but only for premium accounts), desktop application is overwhelmed with functionality, etc.  </p>
+
+<p>So I wanted the zen simplicity of Tomboy combined with the power of Evernote phone app.</p>
+
+<h1>
+<a id="here-comes-tomboy2evernote" class="anchor" href="#here-comes-tomboy2evernote" aria-hidden="true"><span class="octicon octicon-link"></span></a>Here comes tomboy2evernote</h1>
+
+<ul>
+<li>It provides the ability to upload all (or only some) your Tomboy notes and notebooks to your Evernote account (yes, you'll have to have one). 
+So you'll be able to use Evernote phone app to read them.</li>
+<li>And more than that - it can continuously monitor your Tomboy notes and upload all the changes to Evernote.<br>
+</li>
+<li>It is also for those who want to switch from Tomboy to Evernote: just upload all your notes to Evernote once (see usage below).</li>
+</ul>
+
+<h1>
+<a id="important" class="anchor" href="#important" aria-hidden="true"><span class="octicon octicon-link"></span></a>Important</h1>
+
+<ul>
+<li>Synchronization is one-way only<br>
+As the name states - it loads only Tomboy notes to Evernote and not vise a versa</li>
+<li>Tomboy notes are more important than Evernote<br>
+If you have two notes that have same title in Tomboy and Evernote and run this app, Evernote note will be overwritten with Tomboy one. </li>
+<li>Evernote notes are "read-only"<br>
+It comes from the previous point. Of course you can modify your Evernote notes, but they will be overwritten with the corresponding Tomboy notes after the next tool run.<br>
+</li>
+<li>Use it at your own risk<br>
+This tool does not modify/create/delete your Tomboy notes. BUT. <strong>It does modify/create/delete your Evernote notes.</strong> 
+Although it can mess up only notes that have same titles, use it at your own risk.</li>
+</ul>
+
+<h1>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h1>
+
+<ol>
+<li>Install Evernote SDK for Python 3<br>
+<a href="https://github.com/evernote/evernote-sdk-python3">Download it</a>, extract and run<br>
+<code>python3 ./setup.py install</code><br>
+</li>
+<li>Install Tomboy2Evernote<br>
+Download sources and run<br>
+<code>python3 ./setup.py install</code><br>
+</li>
+</ol>
+
+<h1>
+<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration</h1>
+
+<ol>
+<li>Request your Evernote developer token by visiting the <a href="https://www.evernote.com/api/DeveloperToken.action">corresponding page</a>.</li>
+<li>Create the file '~/.config/t2ev/settings.py' with the following contents:<br>
+<code>DEV_TOKEN = '12345'</code><br>
+where 12345 is your dev token</li>
+</ol>
+
+<h1>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span class="octicon octicon-link"></span></a>Usage</h1>
+
+<h2>
+<a id="if-you-want-just-to-upload-some-tomboy-notes-to-evernote" class="anchor" href="#if-you-want-just-to-upload-some-tomboy-notes-to-evernote" aria-hidden="true"><span class="octicon octicon-link"></span></a>If you want just to upload some Tomboy notes to Evernote</h2>
+
+<ul>
+<li>Upload all Tomboy notes:<br>
+<code>t2ev -t all</code><br>
+</li>
+<li>Upload Tomboy notes modified during the last day to your Evernote account:<br>
+<code>t2ev -t day</code><br>
+</li>
+<li>Get all options:<br>
+<code>t2ev --help</code><br>
+</li>
+</ul>
+
+<h2>
+<a id="if-you-want-to-continuously-upload-all-changes-you-make-to-tomboy-notes-to-your-evernote-account" class="anchor" href="#if-you-want-to-continuously-upload-all-changes-you-make-to-tomboy-notes-to-your-evernote-account" aria-hidden="true"><span class="octicon octicon-link"></span></a>If you want to continuously upload all changes you make to Tomboy notes to your Evernote account</h2>
+
+<ul>
+<li>Run it as a daemon:<br>
+<code>t2ev --daemon</code><br>
+First it will upload all your notes to Evernote and then will sit and wait for your actions on Tomboy notes. 
+It's very handy if this PC is online 24/7.</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Tomboy2evernote maintained by <a href="https://github.com/aikikode">aikikode</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-59532271-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>
