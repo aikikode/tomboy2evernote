@@ -1,7 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 import tempfile
+
 import pytest
+
 from evernote.edam.error.ttypes import EDAMUserException
+
 from tomboy2evernote.tomboy2evernote import Evernote, convert_tomboy_to_evernote
 
 __author__ = 'Denis Kovalev (aikikode)'
@@ -88,7 +94,7 @@ class TestT2EvConverter(object):
         assert ev_note['content'] == '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
 <en-note><br clear="none"/></en-note>'''
-        assert ev_note['notebook'] is None
+        assert 'notebook' not in ev_note
         assert ev_note['tags'] == []
 
     def test_plain_text_note(self, tomboy_note):
