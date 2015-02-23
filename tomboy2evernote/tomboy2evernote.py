@@ -46,11 +46,12 @@ class Evernote(EvernoteClient):
                 raise ex
         return result
 
-    def find_note(self, note_title):
+    def find_notes(self, note_title, limit=None):
         notes_retrieve_count = EDAM_USER_NOTES_MAX
         start_index = 0
         remaining = notes_retrieve_count
         notes = []
+        found_notes = []
         while remaining > 0:
             notes_data_list = Evernote.call_method(
                 self.note_store.findNotesMetadata,
@@ -63,15 +64,16 @@ class Evernote(EvernoteClient):
             ]
             for n in retrieved_notes:
                 if n.title == note_title:
-                    return n
+                    found_notes.append(n)
+                    if limit and len(found_notes) >= limit:
+                        return found_notes
             notes += retrieved_notes
 
             total = notes_data_list.totalNotes
             retrieved = len(notes)
             start_index += retrieved
             remaining = total - start_index
-        else:
-            return None
+        return found_notes
 
     def create_or_update_note(self, new_note):
         """ Create new note or update existing one if there's any with provided tile
@@ -102,28 +104,31 @@ class Evernote(EvernoteClient):
             notebook_guid = notebook.guid
 
         # Find or create note
-        note = self.find_note(note_title)
-        if note:
-            note.content = note_contents
-            note.created = note_created
-            note.updated = note_updated
-            if note.notebookGuid != notebook_guid:
+        notes = self.find_notes(note_title)
+        note_already_updated = False
+        for note in notes:
+            if not note_already_updated or note.notebookGuid != notebook_guid:
                 Evernote.call_method(self.note_store.deleteNote, note.guid)
+            else:
+                note.title, note.content = note_title, note_contents
+                note.created, note.updated = note_created, note_updated
+                Evernote.call_method(self.note_store.updateNote, note)
+                note_already_updated = True
         else:
             note = Note()
             note.title, note.content = note_title, note_contents
             note.created, note.updated = note_created, note_updated
-        note.notebookGuid = notebook_guid
-        Evernote.call_method(self.note_store.createNote, note)
+            note.notebookGuid = notebook_guid
+            Evernote.call_method(self.note_store.createNote, note)
 
     def cat_note(self, note_title):
-        note = self.find_note(note_title)
-        if note:
-            print(note.content)
+        notes = self.find_notes(note_title, limit=1)
+        if notes:
+            print(notes[0].content)
 
     def remove_note(self, note_title):
-        note = self.find_note(note_title)
-        if note:
+        notes = self.find_notes(note_title)
+        for note in notes:
             Evernote.call_method(self.note_store.deleteNote, note.guid)
 
 
